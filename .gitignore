@@ -1,0 +1,7 @@
+# build output
+build*/
+perf-out/
+
+# editor / OS noise
+.vscode/
+.DS_Store
