@@ -1,5 +1,7 @@
 # nanoring
 
+[![CI](https://github.com/dhruvil1010/nanoring/actions/workflows/ci.yml/badge.svg)](https://github.com/dhruvil1010/nanoring/actions/workflows/ci.yml)
+
 **A wait-free SPSC ring buffer, and a harness honest enough to measure it in nanoseconds.**
 
 A single-producer/single-consumer queue with no locks and no CAS, a
@@ -312,6 +314,11 @@ build/test_spsc_padded           build/test_spsc_unpadded
 ```
 
 Everything compiles clean under `-Wall -Wextra -Wpedantic`.
+
+CI (badge above) runs on every push: the full test suite on GCC and Clang, both
+layouts, plus a ThreadSanitizer build and run — so the correctness claims are
+machine-checked on Ubuntu even though the performance numbers come from dedicated
+hardware.
 
 ## Running
 

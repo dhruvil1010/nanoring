@@ -1,0 +1,48 @@
+# Runs on every push: the full assert-based test suite on both compilers, plus a
+# ThreadSanitizer pass. This is the machine-checked half of the repo's claims -
+# the correctness half. Performance numbers are NOT measured here on purpose:
+# CI runners are shared VMs with no PMU access, so any timing they produce is
+# noise. See README "Getting numbers worth quoting".
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: build + ctest (${{ matrix.cxx }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        cxx: [g++, clang++]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -B build -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}
+      - name: Build
+        run: cmake --build build -j
+      - name: Test (padded and unpadded layouts)
+        run: ctest --test-dir build --output-on-failure
+
+  tsan:
+    name: ThreadSanitizer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Recent runner kernels default to more mmap address entropy than gcc's
+      # libtsan can handle; without this TSan aborts at startup with
+      # "unexpected memory mapping" before running a single test.
+      - name: Lower ASLR entropy for TSan
+        run: sudo sysctl vm.mmap_rnd_bits=28
+      - name: Configure
+        run: cmake -B build -DNANORING_SANITIZE=ON
+      - name: Build
+        run: cmake --build build -j
+      - name: Run tests under TSan
+        run: |
+          ./build/test_spsc_padded
+          ./build/test_spsc_unpadded
