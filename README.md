@@ -18,25 +18,28 @@ Written up from first principles in [LEARN.md](LEARN.md).
 
 ## Results
 
-**Every number below is `TODO_FILL_IN` because I have not run this on the machine
-you are reading about.** The harness prints the values; paste them in. Nothing in
-this repository contains an estimated, remembered, or illustrative measurement.
+Measured 2026-08-04 on the machine below. Every number in this section came out
+of the harness on that day; nothing is estimated, remembered, or illustrative.
+Timing tables report the **median of 3 runs** (individual runs and spread noted
+below each table). This is a stock laptop running a desktop session — no core
+isolation, no IRQ steering — so treat the extreme tail (p99.99, max) as a
+property of the environment, not the queue.
 
 ### Environment
 
 | | |
 |---|---|
-| CPU | `TODO_FILL_IN` |
-| Cores / threads | `TODO_FILL_IN` |
-| Topology (`lscpu -e`) | `TODO_FILL_IN` |
-| L1d / L2 / L3 | `TODO_FILL_IN` |
-| Cache line | `TODO_FILL_IN` |
-| RAM | `TODO_FILL_IN` |
-| OS / kernel | `TODO_FILL_IN` |
-| Compiler | `TODO_FILL_IN` |
-| Flags | `TODO_FILL_IN` |
-| Producer / consumer core | `TODO_FILL_IN` |
-| Tuning applied (isolcpus, C-states, turbo, SMT) | `TODO_FILL_IN` |
+| CPU | Intel Core i5-12450H (Alder Lake, hybrid): 4 P-cores with SMT + 4 E-cores |
+| Cores / threads | 8 cores / 12 threads (logical 0–7 = P-cores in SMT pairs, 8–11 = E-cores) |
+| Topology | verified empirically: (2,3) ping-pong p50 = 50 ns (shared L1 → SMT siblings); (2,4) p50 = 100 ns (distinct P-cores) |
+| L1d / L2 / L3 | 48 KB per P-core, 32 KB per E-core / 1.25 MB per P-core + 2 MB shared E-cluster (7 MB total, matches WMI) / 12 MB shared (matches WMI) |
+| Cache line | 64 bytes (printed by the benchmark header) |
+| RAM | 16 GB |
+| OS / kernel | Windows 11 Home, build 26200 (no WSL — this is a native-Windows run) |
+| Compiler | GCC 15.2.0 (MSYS2 UCRT64) |
+| Flags | `-std=c++20 -Wall -Wextra -Wpedantic -O2 -g` |
+| Producer / consumer core | 2 / 4 (two distinct P-cores, same socket) |
+| Tuning applied (isolcpus, C-states, turbo, SMT) | **none** — stock power plan, turbo on, SMT on, desktop apps running |
 
 ### Throughput
 
@@ -45,15 +48,18 @@ both pinned. Warmup discarded.
 
 | Build | Scenario | messages/sec | ns/op |
 |---|---|---|---|
-| padded | `spsc_ring`, spin | `TODO_FILL_IN` | `TODO_FILL_IN` |
-| padded | `mutex_queue`, spin on `try_*` | `TODO_FILL_IN` | `TODO_FILL_IN` |
-| padded | `mutex_queue`, blocking | `TODO_FILL_IN` | `TODO_FILL_IN` |
-| unpadded | `spsc_ring`, spin | `TODO_FILL_IN` | `TODO_FILL_IN` |
+| padded | `spsc_ring`, spin | 78,635,764 | 12.72 |
+| padded | `mutex_queue`, spin on `try_*` | 7,924,425 | 126.19 |
+| padded | `mutex_queue`, blocking | 4,178,072 | 239.34 |
+| unpadded | `spsc_ring`, spin | 43,819,308 | 22.82 |
+
+Run spread (msg/s): spsc padded 66.0M–78.7M, spsc unpadded 42.6M–53.6M,
+mutex spin 7.9M–8.5M, mutex blocking 4.1M–4.8M.
 
 | Derived | Value |
 |---|---|
-| `spsc_ring` speedup over `mutex_queue` (spin) | `TODO_FILL_IN` |
-| Padded speedup over unpadded (false-sharing cost) | `TODO_FILL_IN` |
+| `spsc_ring` speedup over `mutex_queue` (spin) | **9.9×** (78.6M / 7.9M) |
+| Padded speedup over unpadded (false-sharing cost) | **1.79×** (78.6M / 43.8M) |
 
 ### Latency
 
@@ -62,39 +68,66 @@ nanoseconds, one way.
 
 | Build | Scenario | min | p50 | p99 | p99.9 | p99.99 | max |
 |---|---|---|---|---|---|---|---|
-| padded | `spsc_ring`, spin | `TODO_FILL_IN` | `TODO_FILL_IN` | `TODO_FILL_IN` | `TODO_FILL_IN` | `TODO_FILL_IN` | `TODO_FILL_IN` |
-| padded | `mutex_queue`, spin | `TODO_FILL_IN` | `TODO_FILL_IN` | `TODO_FILL_IN` | `TODO_FILL_IN` | `TODO_FILL_IN` | `TODO_FILL_IN` |
-| padded | `mutex_queue`, blocking | `TODO_FILL_IN` | `TODO_FILL_IN` | `TODO_FILL_IN` | `TODO_FILL_IN` | `TODO_FILL_IN` | `TODO_FILL_IN` |
-| unpadded | `spsc_ring`, spin | `TODO_FILL_IN` | `TODO_FILL_IN` | `TODO_FILL_IN` | `TODO_FILL_IN` | `TODO_FILL_IN` | `TODO_FILL_IN` |
+| padded | `spsc_ring`, spin | 50 | 100 | 150 | 200 | 11,150 | 780,450 |
+| padded | `mutex_queue`, spin | 100 | 500 | 1,300 | 4,700 | 76,450 | 2,646,800 |
+| padded | `mutex_queue`, blocking | 650 | 4,750 | 23,800 | 224,400 | 987,350 | 4,317,800 |
+| unpadded | `spsc_ring`, spin | 100 | 150 | 200 | 300 | 26,500 | 5,839,400 |
 
 Measured `steady_clock::now()` cost, included in every sample above:
-p50 `TODO_FILL_IN` ns, p99 `TODO_FILL_IN` ns.
-Effective clock resolution: `TODO_FILL_IN` ns.
+p50 0 ns, p99 100 ns.
+Effective clock resolution: 100 ns.
+
+Two caveats on reading this table. First, Windows' `steady_clock` steps in
+100 ns units (the harness measures and prints this), so every one-way figure is
+quantised to a 50 ns grid — "p50 = 100" means the true median lies somewhere in
+that bucket, and min/p50/p99 for the spsc ring are at the grid's limit rather
+than precise values. The *ordering* and the padded-vs-unpadded gap are real; the
+low-end digits are not fine-grained. Second, p99.99 and max moved a lot between
+runs (spsc padded max: 0.28 ms–1.85 ms) — that is the desktop environment
+(scheduler, interrupts), not the queue, which is exactly why the tuning checklist
+below exists.
 
 ### Hardware counters (`bench/run_perf.sh`)
 
 Same workload, both builds, counted with `perf stat`.
 
+**Pending a bare-metal Linux run.** `perf` is Linux-only and the timing results
+above were taken on native Windows (no WSL on this machine). The timing A/B
+already shows the false-sharing cost (1.79× throughput, +50 ns p50); this table
+is the counter-level evidence for *why*, and the rows stay open until the same
+binaries run under Linux `perf` on real hardware — not WSL2, whose virtualised
+PMU misreports exactly these events.
+
 | Event | padded | unpadded |
 |---|---|---|
-| cache-misses | `TODO_FILL_IN` | `TODO_FILL_IN` |
-| cache-references | `TODO_FILL_IN` | `TODO_FILL_IN` |
-| L1-dcache-load-misses | `TODO_FILL_IN` | `TODO_FILL_IN` |
-| L1-dcache-loads | `TODO_FILL_IN` | `TODO_FILL_IN` |
-| context-switches | `TODO_FILL_IN` | `TODO_FILL_IN` |
-| cache miss rate | `TODO_FILL_IN` | `TODO_FILL_IN` |
-| L1-dcache miss rate | `TODO_FILL_IN` | `TODO_FILL_IN` |
+| cache-misses | pending Linux run | pending Linux run |
+| cache-references | pending Linux run | pending Linux run |
+| L1-dcache-load-misses | pending Linux run | pending Linux run |
+| L1-dcache-loads | pending Linux run | pending Linux run |
+| context-switches | pending Linux run | pending Linux run |
+| cache miss rate | pending Linux run | pending Linux run |
+| L1-dcache miss rate | pending Linux run | pending Linux run |
 
 ### Core placement
 
-Same benchmark, three placements, to show that the queue's cost is really the
-memory path between two cores.
+Same benchmark, same padded binary, different placements — to show that the
+queue's cost is really the memory path between two cores. (Cross-core rows are
+the median-of-3 headline runs; the sibling and E-core rows are single full runs.)
 
 | Placement | Cores used | `spsc_ring` p50 (ns) | `spsc_ring` messages/sec |
 |---|---|---|---|
-| SMT siblings, one physical core | `TODO_FILL_IN` | `TODO_FILL_IN` | `TODO_FILL_IN` |
-| Two physical cores, one socket | `TODO_FILL_IN` | `TODO_FILL_IN` | `TODO_FILL_IN` |
-| Two sockets (if available) | `TODO_FILL_IN` | `TODO_FILL_IN` | `TODO_FILL_IN` |
+| SMT siblings, one physical core | 2, 3 | 50 | 780,207,691 (1.28 ns/op) |
+| Two physical P-cores, one socket | 2, 4 | 100 | 78,635,764 (12.72 ns/op) |
+| Two E-cores, shared L2 cluster | 8, 9 | 100 | 226,150,200 (4.42 ns/op) |
+| Two sockets | n/a | — | single-socket laptop |
+
+The spread is the whole lesson of §3 in LEARN.md, measured. Between SMT siblings
+the queue's cache lines never leave one core's L1, so a "message" costs about a
+cycle-and-a-half of amortised work — 10× the cross-core throughput. The two
+E-cores sit in one cluster sharing a 2 MB L2, so their hand-off (through L2)
+lands between the other two: 3× the P-core-to-P-core rate despite the E-cores
+being individually slower. Same binary, same algorithm — the only thing that
+changed is how far a cache line has to travel.
 
 ---
 
