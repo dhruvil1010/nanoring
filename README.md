@@ -123,7 +123,7 @@ the median-of-3 headline runs; the sibling and E-core rows are single full runs.
 | Two E-cores, shared L2 cluster | 8, 9 | 100 | 226,150,200 (4.42 ns/op) |
 | Two sockets | n/a | — | single-socket laptop |
 
-The spread is the whole lesson of §3 in LEARN.md, measured. Between SMT siblings
+The spread is the whole lesson of section 3 in LEARN.md, measured. Between SMT siblings
 the queue's cache lines never leave one core's L1, so a "message" costs about a
 cycle-and-a-half of amortised work — 10× the cross-core throughput. The two
 E-cores sit in one cluster sharing a 2 MB L2, so their hand-off (through L2)
@@ -198,7 +198,7 @@ In the padded layout the producer's writes land in line 0 and the consumer's in
 line 1, so neither invalidates the other. In the unpadded layout they share a
 line, and every push steals it from the consumer while every pop steals it back —
 the coherence protocol ping-pongs a line whose *logical* contents the other side
-does not even care about. See [LEARN.md §3](LEARN.md#3-false-sharing-at-the-mesi-level).
+does not even care about. See [LEARN.md section 3](LEARN.md#3-false-sharing-at-the-mesi-level).
 
 The storage array gets its own line in both builds. Otherwise the first few
 elements would share a line with `head_`, the producer writing element 0 would
@@ -247,7 +247,7 @@ consumer mirrors the trick with `cached_tail_`.
 
 Every one of these carries a one-line comment in `spsc_ring.hpp` naming the exact
 race it prevents. The two-thread interleaving that a `relaxed` store would allow is
-worked through step by step in [LEARN.md §1](LEARN.md#1-why-relaxed-breaks-this-queue).
+worked through step by step in [LEARN.md section 1](LEARN.md#1-why-relaxed-breaks-this-queue).
 
 On x86-64 the acquire load and the release store both compile to a plain `mov` —
 the hardware's TSO model gives them for free. They are not decoration: they stop
@@ -283,7 +283,7 @@ trying to measure.
 
 Whether this harness suffers from coordinated omission — and what it measures
 instead — is discussed at the top of `include/latency_hist.hpp` and in
-[LEARN.md §5](LEARN.md#5-why-the-mean-is-the-wrong-number).
+[LEARN.md section 5](LEARN.md#5-why-the-mean-is-the-wrong-number).
 
 ---
 
@@ -411,7 +411,7 @@ LEARN.md                    the concepts, from first principles, with counterexa
 - **SPSC only.** Exactly one producer thread and exactly one consumer thread. Two
   producers will corrupt the queue silently — there is no runtime check, because a
   check would cost more than the operation it guards. Making it MPMC means CAS
-  loops and giving up wait-freedom; see [LEARN.md §6](LEARN.md#6-why-spsc-is-wait-free-and-mpmc-is-not).
+  loops and giving up wait-freedom; see [LEARN.md section 6](LEARN.md#6-why-spsc-is-wait-free-and-mpmc-is-not).
 - **Bounded, and it does not block.** `try_push` fails when full. Backpressure is
   the caller's decision, which is the right place for it.
 - **Closed-loop latency.** The ping-pong measures service time at queue depth one,

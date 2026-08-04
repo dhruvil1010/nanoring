@@ -153,7 +153,7 @@ cached_tail_ = tail_.load(std::memory_order_acquire); // (D) cannot be reordered
 in this thread may be reordered after it. `acquire` on the consumer's load means:
 no memory operation sequenced after it may be reordered before it. Together they
 build a one-way barrier pair that pins (A) before (B) and (C) before (D), and —
-crucially — establishes the *inter-thread* guarantee described in §2.
+crucially — establishes the *inter-thread* guarantee described in section 2.
 
 The same argument runs in the other direction for `head_`: the consumer's
 `cell->~T()` must be finished before the producer's placement-`new` can start on
@@ -503,7 +503,7 @@ std::atomic<std::size_t> count_{0};
 
 It resolves the ambiguity, and it costs you the entire design. `count_` is written
 by *both* threads, so it is a permanently contended cache line — the false sharing
-of §3, except now it is true sharing and you cannot pad it away. Worse, both sides
+of section 3, except now it is true sharing and you cannot pad it away. Worse, both sides
 now need a read-modify-write (`lock xadd`), which is an atomic bus/cache-locked
 operation, where the whole point of the two-counter design is that each side does
 a plain load and a plain store to a location nobody else writes. You have turned a
@@ -810,7 +810,7 @@ things you need and two you do not have:
 - Two threads accessing a non-atomic `volatile` object is still a data race by
   the standard's definition, hence still undefined behaviour.
 
-The practical demonstration is exactly §1's table: `volatile` on `tail_` prevents
+The practical demonstration is exactly section 1's table: `volatile` on `tail_` prevents
 none of it. In benchmark harnesses `volatile` is *also* the wrong tool for
 defeating the optimiser, because it forces a real memory access into the loop and
 therefore changes what you are measuring — an empty `asm volatile` with a memory
